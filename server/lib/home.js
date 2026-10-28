@@ -621,6 +621,27 @@ function devices(cb) {
 }
 
 /*
+ * Paired Bluetooth audio devices, in the reverse of the TV's order with connected ones last, as tiles at the front
+ * of the Inputs row. The class of device is read as telemetry's btAudio does:
+ * major class 4 is audio/video, which leaves out the Magic Remote. Not
+ * cached, as a headset switched on or off should show at the next refresh.
+ */
+function bluetoothDevices(cb) {
+  luna('com.webos.service.bluetooth2/device/getStatus', {}, function (r) {
+    if (!r || r.returnValue === false || !isArray(r.devices)) return cb([]);
+    var out = [];
+    r.devices.forEach(function (d) {
+      if (!d || typeof d.address !== 'string' || !d.address || d.paired === false) return;
+      if (((Number(d.classOfDevice) >> 8) & 0x1f) !== 4) return;
+      var connected = isArray(d.connectedProfiles) && d.connectedProfiles.length > 0;
+      out.push({ id: 'bt:' + d.address, name: String(d.name || d.address), address: d.address, bt: true, connected: connected });
+    });
+    out.sort(function (a, b) { return (b.connected ? 1 : 0) - (a.connected ? 1 : 0); });
+    cb(out.reverse());
+  });
+}
+
+/*
  * The tuner's channels as { id, number, name, radio }, in the TV's order, or
  * null where it gave none. On a G3 (webOS 9.2) the full list is the API
  * adapter's tv/getChannelList, the method behind SSAP's ssap://tv/getChannelList.
@@ -652,18 +673,20 @@ function catalogue(cb) {
 function rows(cb) {
   var c = readConfig();
   launchPoints(function (apps) {
-    devices(function (devs) {
+    devices(function (hdmi) {
+     bluetoothDevices(function (bt) {
       channelList(function (chans) {
-        recommendedCards(c, function (recs) { cb(build(c, apps, devs, chans, recs)); });
+        recommendedCards(c, function (recs) { cb(build(c, apps, hdmi, bt, chans, recs)); });
       });
+     });
     });
   });
 }
 
-function build(c, apps, devs, chans, recs) {
+function build(c, apps, hdmi, bt, chans, recs) {
   var appList = byUse(apps || []);
   var appIds = appList.map(function (a) { return a.id; }).concat([LG_HOME_TILE]);
-  var devIds = (devs || []).map(function (d) { return d.id; });
+  var devIds = (hdmi || []).map(function (d) { return d.id; });
   var picked = [];
   (chans || []).forEach(function (ch) { if (c.channels.indexOf(ch.id) !== -1) picked.push(ch); });
   picked.sort(function (a, b) { return c.channels.indexOf(a.id) - c.channels.indexOf(b.id); });
@@ -674,6 +697,8 @@ function build(c, apps, devs, chans, recs) {
     rec: []
   };
   ROWS.forEach(function (r) { if (c.sort[r] === 'recent') order[r] = lastOpenedFirst(r, order[r]); });
+  // Bluetooth devices stay first whatever the row's order; they are not part of what is saved.
+  order.dev = bt.map(function (d) { return d.id; }).concat(order.dev);
   // Each app's cards together, in the Apps row's order; an app hidden there,
   // or not on the TV, shows none.
   var all = recs || [];
@@ -690,12 +715,12 @@ function build(c, apps, devs, chans, recs) {
       if (a.overlay) app.overlay = true;
       return app;
     }),
-    devices: devs || [],
+    devices: bt.concat(hdmi || []),
     channels: picked,
     recommended: cards,
     order: order,
     // recommended: false while the row is off, null when the TV gave no list.
-    sources: { apps: !!apps, devices: !!devs, channels: chans ? chans.length : null,
+    sources: { apps: !!apps, devices: !!hdmi, channels: chans ? chans.length : null,
       recommended: c.recommended ? (recs ? recs.length : null) : false }
   };
 }
@@ -892,6 +917,18 @@ function open(body, cb) {
       var known = (apps || []).some(function (a) { return a.id === id; });
       if (!known) return cb({ ok: false, error: msg('srv.home.unknownTile', 'that is not on Glasshouse Home') });
       launch(id, null, opened('app', id, cb));
+    });
+  }
+  if (kind === 'dev' && id.indexOf('bt:') === 0) {
+    return bluetoothDevices(function (bt) {
+      /** @type {any} */
+      var hit = null;
+      bt.forEach(function (d) { if (d.id === id) hit = d; });
+      if (!hit) return cb({ ok: false, error: msg('srv.home.unknownTile', 'that is not on Glasshouse Home') });
+      // Not yet tried on a TV: a2dp/connect is webOS's profile-level connect for audio.
+      luna('com.webos.service.bluetooth2/a2dp/connect', { address: hit.address }, function (r) {
+        cb({ ok: !!(r && r.returnValue), error: r && r.returnValue ? undefined : msg('srv.home.btRefused', 'the TV could not connect it') });
+      });
     });
   }
   if (kind === 'dev') {

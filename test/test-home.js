@@ -202,6 +202,11 @@ function luna(uri, p, cb) {
         { id: 'SIMPLINK', depth: 2, physicalAddress: 9216, uniqueId: 8, osdName: 'PlayStation 5' }
       ] }
     ];
+  } else if (uri === 'com.webos.service.bluetooth2/device/getStatus') {
+    r.devices = tv.bluetooth || [];
+  } else if (uri === 'com.webos.service.bluetooth2/a2dp/connect') {
+    tv.btConnects = (tv.btConnects || []).concat([p.address]);
+    if (tv.btRefuses) r.returnValue = false;
   } else if (uri === 'com.webos.service.apiadapter/tv/getChannelList') {
     r.channelList = (tv.channels || []).map(function (id) { return { channelId: id, channelNumber: id, channelName: id }; });
   } else if (uri === 'com.webos.service.utp.boot/getLastChannelId') {
@@ -272,6 +277,32 @@ step('the saved layout keeps its order, drops what has gone and appends what is 
     assert.strictEqual(c.devices[2].via, 'STEREO 70s');
     assert.strictEqual(c.devices[2].address, '2.4.0.0');
     done();
+  });
+});
+
+step('paired Bluetooth audio devices lead the Inputs row, in reverse, and a tile asks the TV to connect it', function (done) {
+  start({ order: { app: [], dev: ['hdmi2:playstation-5'], ch: [] } });
+  tv.bluetooth = [
+    { address: 'AA:01', name: 'Headphones', paired: true, classOfDevice: 0x240404, connectedProfiles: [] },
+    { address: 'AA:02', name: 'Magic Remote', paired: true, classOfDevice: 0x1f00, connectedProfiles: ['gatt'] },
+    { address: 'AA:03', name: 'Soundbar', paired: true, classOfDevice: 0x240414, connectedProfiles: ['a2dp'] },
+    { address: 'AA:04', name: 'Unpaired speaker', paired: false, classOfDevice: 0x240404 }
+  ];
+  home.catalogue(function (c) {
+    assert.deepEqual(c.order.dev.slice(0, 3), ['bt:AA:01', 'bt:AA:03', 'hdmi2:playstation-5'], 'connected last (the list is reversed), no remote, no unpaired');
+    assert.strictEqual(c.devices[1].connected, true);
+    home.open({ kind: 'dev', id: 'bt:AA:01' }, function (r) {
+      assert.ok(r.ok);
+      assert.deepEqual(tv.btConnects, ['AA:01']);
+      tv.btRefuses = true;
+      home.open({ kind: 'dev', id: 'bt:AA:01' }, function (r2) {
+        assert.strictEqual(r2.ok, false);
+        home.open({ kind: 'dev', id: 'bt:FF:FF' }, function (r3) {
+          assert.strictEqual(r3.ok, false, 'only a listed device');
+          done();
+        });
+      });
+    });
   });
 });
 

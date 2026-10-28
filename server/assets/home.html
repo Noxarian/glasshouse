@@ -146,6 +146,16 @@ body{font-family:'Manrope',sans-serif;color:#ece7df;-webkit-font-smoothing:antia
 .dev .st{font-size:19px;color:#6b665e;display:-webkit-flex;display:flex;-webkit-justify-content:space-between;justify-content:space-between}
 .dev .st em{font-style:normal}
 .dev.last .st em{color:#e9ad55}
+.dev.bt{-webkit-flex-direction:row;flex-direction:row;-webkit-align-items:center;align-items:center;-webkit-justify-content:flex-start;justify-content:flex-start}
+.dev.bt .btic{-webkit-flex:0 0 auto;flex:0 0 auto;width:64px;height:64px;margin-right:18px;border-radius:50%;background:rgba(255,255,255,.08);
+  color:#a39d93;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;-webkit-justify-content:center;justify-content:center}
+.dev.bt .btic svg{width:34px;height:34px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.dev.bt.on .btic{background:#2f7be8;color:#fff}
+.dev.bt.on .st em{color:#6fb0ff}
+.dev.bt .btx{-webkit-flex:1 1 auto;flex:1 1 auto;min-width:0}
+.dev.bt .st{margin-top:6px}
+.alternative .dev.bt .btic{width:52px;height:52px;margin-right:14px}
+.alternative .dev.bt .btic svg{width:28px;height:28px}
 .row .dev.unused{opacity:.3}
 .row .dev.unused.focus{opacity:.6}
 .dev.last .st em:before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#e9ad55;margin-right:10px;vertical-align:2px}
@@ -350,6 +360,7 @@ html.faded #stage{opacity:0}
     <div id="when">
       <div id="clock"><span id="hm">&mdash;</span><span id="mer" hidden></span></div>
       <div id="date">&mdash;</div>
+      <div id="date">Nox Edition</div>
     </div>
     <div id="source" class="none">
       <div id="srcKind">&mdash;</div>
@@ -647,6 +658,7 @@ html.faded #stage{opacity:0}
     if (kind === 'dev') {
       var ports = [];
       items('dev').forEach(function (d) { if (!d.unused && ports.indexOf(d.port) === -1) ports.push(d.port); });
+      if (!ports.length) return '';
       return ports.length === 1 ? t('home.row.inputsNoteOne', 'Devices on HDMI {port}', { port: ports[0] })
         : t('home.row.inputsNote', 'Devices on {n} HDMI inputs', { n: ports.length });
     }
@@ -737,6 +749,13 @@ html.faded #stage{opacity:0}
         hiddenLabel + folderLabel + '</div>';
     },
     dev: function (d, i) {
+      if (d.bt) {
+        return '<div class="tile dev bt' + (d.connected ? ' on' : '') + (hidden('dev', d.id) ? ' hidden' : '') + '" data-c="' + i + '">' +
+          '<span class="btic"><svg viewBox="0 0 24 24"><path d="M6.5 7.5l11 9-5.5 4.5V3l5.5 4.5-11 9"/></svg></span>' +
+          '<div class="btx"><div class="nm">' + esc(d.name) + '</div>' +
+          '<div class="path">' + esc(t('home.dev.bluetooth', 'Bluetooth')) + '</div>' +
+          '<div class="st"><em>' + esc(d.connected ? t('home.dev.btConnected', 'Connected') : t('home.dev.btConnect', 'Press to connect')) + '</em></div></div>' + hiddenLabel + '</div>';
+      }
       var last = layout.showLastOn !== false && lastOn.kind === 'input' && lastOn.port === d.port;
       var cls = 'tile dev' + (last ? ' last' : '') + (d.unused ? ' unused' : '') + (hidden('dev', d.id) ? ' hidden' : '');
       var path = d.unused ? '' : d.via ? t('home.dev.through', 'HDMI {port}, through {via}', { port: d.port, via: d.via })

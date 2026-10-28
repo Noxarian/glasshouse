@@ -106,6 +106,19 @@ var mock = require('./mock-env').createMockEnv({ luna: {
       ]
     };
   },
+  'com.webos.service.bluetooth2/device/getStatus': function () {
+    return {
+      returnValue: true,
+      devices: [
+        { address: '00:1A:7D:DA:71:13', name: 'WH-1000XM5', paired: true, classOfDevice: 0x240404, connectedProfiles: [] },
+        { address: '00:1A:7D:DA:71:14', name: 'Soundbar', paired: true, classOfDevice: 0x240414, connectedProfiles: ['a2dp'] },
+        { address: '00:1A:7D:DA:71:15', name: 'LGE MR24', paired: true, classOfDevice: 0x1f00, connectedProfiles: ['gatt'] }
+      ]
+    };
+  },
+  'com.webos.service.bluetooth2/a2dp/connect': function () {
+    return { returnValue: true };
+  },
   'com.webos.service.apiadapter/tv/getChannelList': function () {
     return {
       returnValue: true,

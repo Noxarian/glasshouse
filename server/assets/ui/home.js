@@ -288,6 +288,7 @@ function homeItem(kind, id) {
   const it = list.find(x => x.id === id);
   if (!it) return null;
   if (kind === 'dev' && it.unused) return { title: it.name, sub: t('home.dev.unused', 'Nothing connected'), unused: true };
+  if (kind === 'dev' && it.bt) return { title: it.name, sub: t('home.dev.bluetooth', 'Bluetooth') };
   if (kind === 'dev') return { title: it.name, sub: it.via ? t('home.dev.through', 'HDMI {port}, through {via}', { port: it.port, via: it.via }) : t('home.dev.port', 'HDMI {port}', { port: it.port }) };
   if (kind === 'ch') return { title: it.number + ' ' + it.name };
   return { title: it.title, icon: it.icon };
