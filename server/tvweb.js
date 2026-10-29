@@ -19,7 +19,7 @@
  * first 4096 bytes of a downloaded tvweb.js for this line (up to 0.82.2), and
  * refuses a release where it is further down (#586).
  */
-var TVWEB_VERSION = '0.130.0';
+var TVWEB_VERSION = '0.132.0';
 
 var http = require('http');
 var fs = require('fs');
@@ -541,7 +541,8 @@ iconServer.init({ config: CONFIG, apps: appsModule });
 servicesModule.init({ stateDir: __dirname });
 preload.init({ luna: luna, stateDir: __dirname });
 quickAccess.init({ luna: luna, inputNames: telemetry.inputNameMap });
-remoteKeys.init({ luna: luna, subscription: lunaTransport.Subscription, services: servicesModule, inputNames: telemetry.inputNameMap, stateDir: __dirname });
+remoteKeys.init({ luna: luna, subscription: lunaTransport.Subscription, services: servicesModule, inputNames: telemetry.inputNameMap, stateDir: __dirname,
+  homeAssistant: function () { return !!(CONFIG.mqtt && CONFIG.mqtt.enabled && CONFIG.mqtt.host); } });
 homeScreen.init({ luna: luna, config: CONFIG, inputNames: telemetry.inputNameMap, stateDir: __dirname, webosVersion: telemetry.detectWebosVersion() });
 // webOS 10's layout is an overlay mount, gone after a restart of the TV.
 homeScreen.reapply();
@@ -930,6 +931,10 @@ routes.init({
   clock: clockFormat,
   piccapStatus: piccap.status,
   huesyncStatus: huesync.status,
+  keyboardUp: function () {
+    var kb = liveState.state.snapshot().keyboard;
+    return kb && typeof kb.keyboard_visible === 'boolean' ? kb.keyboard_visible : null;
+  },
   repo: repo,
   installer: installer,
   prometheus: prometheus,
